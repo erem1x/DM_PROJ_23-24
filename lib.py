@@ -38,11 +38,11 @@ def precedence_graph(S):
     
     print_graph(nodes, edges)
     if not check_cycle(nodes, edges):
-        print("Schedule in conflict-serialisable!")
+        print(f"{bcolors.OKGREEN}Schedule is conflict-serialisable!{bcolors.ENDC}")
         return True
     
     else:
-        print("Schedule is not conflict-serialisable!")
+        print(f"{bcolors.FAIL}Schedule is not conflict-serialisable!{bcolors.ENDC}")
         return False
 
 
@@ -55,36 +55,46 @@ def print_graph(nodes, edges):
             print(node + " ->", ", ".join(edges[node]))
         else:
             print(node + " ->")
+    print("")
     
 
 # Check whether the graph has a cycle (dfs)
 def check_cycle(nodes, edges):
-    print("")
     visited = set()
     path = set()
 
     def dfs(node):
+        if(node in path):
+            return True
         if(node in visited):
             return False
         
         visited.add(node)
         path.add(node)
-        print("path: ", path, "visited so far: ", visited)
-        print("node: "+node)
+
         for elem in edges[node]:
-            if elem in path:
+            if(elem in path):
                 return True
-            else:
-                return dfs(elem)
-            
+            else: 
+                if(dfs(elem)):
+                    return True
+        
         path.remove(node)
         return False
-
+    
+    
     for elem in nodes:
-        if elem not in visited:
-            if(dfs(elem)):
-                return True
-
+        if(dfs(elem)):
+            return True
+    
     return False
     
     
+
+
+
+class bcolors:
+    OKGREEN = '\033[92m'
+    WARNING = '\033[93m'
+    FAIL = '\033[91m'
+    ENDC = '\033[0m'
