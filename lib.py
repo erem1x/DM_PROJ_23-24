@@ -1,17 +1,5 @@
 # SET OF AUX FUNCTIONS
 
-# Format function
-# W1(A) -> "T1", "W", "A"
-def write_schedule(S):
-    S = S.upper()
-    l = S.split()
-    ret=[]
-    for elem in l:
-        ret.append(["T"+elem[1], elem[0], elem[3]])
-    return ret
-
-
-
 # Build the precedence graph
 def precedence_graph(S):
     nodes = []
@@ -89,10 +77,64 @@ def check_cycle(nodes, edges):
     
     return False
     
+
+# Only way is to bruteforce, not suitable for big inputs
+def check_view(S):
+    reads_from = get_view(S)[0]
+    final_write = get_view(S)[1]
+    print("FINAL-WRITE:",print_view(final_write, "FW"))
+    print("READS-FROM:", print_view(reads_from, "RF"))
+
+    return False
+
+
+# compute READS-FROM and LAST-WRITE on one cycle
+def get_view(S):
+    LAST_WRITE = {}
+    READS_FROM = []
+
+    write_set = {}
+    for i in range(len(S)):
+        trans, oper, var = S[i]
+        if oper == "W":
+            LAST_WRITE[var] = trans
+            write_set[var] = trans
+        
+        else:
+            if var in write_set:
+                READS_FROM.append([var, trans, write_set[var]])
+
+    return [READS_FROM, LAST_WRITE]
+
+# print final-write and reads-from
+def print_view(ret, flag):
+    if(flag=="FW"):
+        output ="<"
+        for key, value in ret.items():
+            output+=f"w{value[1]}({key}) "
+        output = output[:-1]+">"
+
+    else:
+        output = ""
+        for elem in ret:
+            output+="<"
+            output+=(f"r{elem[1][1]}({elem[0]}), w{elem[2][1]}({elem[0]}) ")
+            output = output[:-1]+"> "
+        
     
+    return output
 
+# Format function
+# W1(A) -> "T1", "W", "A"
+def write_schedule(S):
+    S = S.upper()
+    l = S.split()
+    ret=[]
+    for elem in l:
+        ret.append(["T"+elem[1], elem[0], elem[3]])
+    return ret
 
-
+# colors used in terminal
 class bcolors:
     OKGREEN = '\033[92m'
     WARNING = '\033[93m'
