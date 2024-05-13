@@ -54,10 +54,8 @@ def brute_force(S, R, F, O):
     aux = build_serial(S,O,R)
     ret = None
     if(aux):
-        print(f"Testing {len(aux)} serial schedule(s)...")
         for item in aux:
             if(recurr(item)):
-                print("View-equivalent schedule found!")
                 ret=item
                 break
     

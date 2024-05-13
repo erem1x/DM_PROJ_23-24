@@ -59,8 +59,6 @@ class Schedule:
         return ', '.join(map(repr, self.transactions))
 
 
-
-
 # Build the precedence graph
 def precedence_graph(S):
     nodes = []
