@@ -22,7 +22,8 @@ def main_fun(S):
         ret = check_view(S)
         if(ret is not None):
             view_ser = True
-            print(f"Here is a view-equivalent schedule:\n{bcolors.BOLD}")
+            print(f"Here is a view-equivalent schedule:")
+            print("["+', '.join(['T' + str(num) for num in ret.trans])+"]\n", bcolors.BOLD)
             print(ret, f"{bcolors.ENDC}\n")
             print(f"{bcolors.OKGREEN}Schedule is view-serialisable!{bcolors.ENDC}")
 
