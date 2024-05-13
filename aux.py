@@ -1,3 +1,5 @@
+from itertools import permutations
+
 # class of transaction to make things easier
 class Transaction:
     def __init__(self, trans, oper, var):
@@ -163,18 +165,8 @@ def build_serial(S, O, R):
     # generate all possible orders
     def gen_ord():
 
-        # FIX THIS in order to get more orders
-        def custom_key(x):
-            def compare(a, b):
-                print("a:",a, "b:",b)
-                if a in const:
-                    return 1
-                return -1
-            
-            ret = sorted(x, key=lambda num: compare(num, x))
-            print(ret)
-            return(ret)
-
+        # get all the constaints in a dictionary, {"Ti": ["Tj", "Tk"} means that
+        # Ti must come after Tj and Tk
         def gen_constraints():
             # from the write set
             for item in O.values():
@@ -182,7 +174,8 @@ def build_serial(S, O, R):
                     for i in range(len(item)-1):
                         if item[-1] not in const:
                             const[item[-1]]=[]
-                        const[item[-1]].append(item[i])
+                        if item[i] not in const[item[-1]]:
+                            const[item[-1]].append(item[i])
 
             # from the read-from property
             for key, value in R.items():
@@ -191,18 +184,39 @@ def build_serial(S, O, R):
                 else:
                     if(value.get_int() not in const[key.get_int()]):
                         const[key.get_int()].append(value.get_int())
+
+        # check if the permutations of T are legal according to constraints 
+        def check_const(p):
+            for key, values in const.items():
+                for value in values:
+                    const_list.append(p.index(key) > p.index(value))
+            if all(const_list):
+                return True
+            else:
+                return False
             
 
+        const_list = []
         const = {}
+        ret = []
         gen_constraints()
-        print(const)
-        return custom_key(S.trans)
+
+        # compute permutations and check them
+        for p in permutations(S.trans):
+            const_list.clear()
+            if(check_const(p)):
+                ret.append(p)
+        return ret
         
     try:
         ret = gen_ord()
-        #print(ret)
-        ret = S.sort(ret)
-        return ret
+        if ret is None:
+            return None
+        ret_schedule = []
+
+        for item in ret:
+            ret_schedule.append(S.sort(item))
+        return ret_schedule
 
     except ValueError:
         return None

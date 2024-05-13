@@ -23,5 +23,7 @@ def exec(S):
     main_fun(S)
 
 exec(ex4)
+exec(ex3)
+exec(ex2)
 
 

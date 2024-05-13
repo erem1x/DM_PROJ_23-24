@@ -38,6 +38,7 @@ def brute_force(S, R, F, O):
         if found: return
         if check(aux):
             found = True
+            return True
         else:
             return None
 
@@ -51,12 +52,14 @@ def brute_force(S, R, F, O):
     
     found = False
     aux = build_serial(S,O,R)
-    print(aux)
-    ret = aux
+    ret = None
     if(aux):
-        recurr(aux)
-    else:
-        print("No view-equivalent schedule could be made\n")
+        print(f"Testing {len(aux)} serial schedule(s)...")
+        for item in aux:
+            if(recurr(item)):
+                print("View-equivalent schedule found!")
+                ret=item
+                break
     
     return ret if found else None
     
