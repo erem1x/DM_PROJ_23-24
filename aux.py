@@ -1,6 +1,6 @@
 from itertools import permutations
 
-# class of transaction to make things easier
+# classes to make things easier
 class Transaction:
     def __init__(self, trans, oper, var):
         self.trans = trans.upper()
@@ -57,6 +57,71 @@ class Schedule:
 
     def __repr__(self):
         return ', '.join(map(repr, self.transactions))
+
+class LockTable:
+    def __init__(self, S):
+        self.var = []
+        self.trans = []
+        self.locked = {}
+        if(isinstance(S, Schedule)):
+            self.var = S.var
+            self.trans = S.trans
+            for item in self.var:
+                self.locked[item] = self.Lock()
+    
+
+    def lock(self, var, trans):
+        if not self.check(var):
+            self.locked[var] = self.Lock(locked = True, trans = trans)
+            return True
+        else: return False
+
+    def unlock(self, var):
+        if self.check(var):
+            self.locked[var].clear()
+            return True
+        else: return False
+
+    
+    def check(self, var):
+        if var in self.var:
+            return self.locked[var].check()
+
+    def __repr__(self):
+        ret = "LOCKTABLE:\n\n"
+        for item in self.var:
+            ret+=f"{item}: locked = {self.locked[item].check()}, by: {self.locked[item].get()}\n"
+        return ret
+
+    class Lock:
+        def __init__(self, locked=False, trans=None):
+            self.trans = trans
+            self.locked = locked
+        
+        def check(self):
+            return self.locked
+
+        def clear(self):
+            if self.locked == True:
+                self.trans = None
+                self.locked = False
+                return True
+            else: return False
+        
+        def get(self):
+            return self.trans
+
+
+####################
+# 2PL section
+####################
+def print_lock(S):
+    print(LockTable(S))
+
+def assign_locks(S):
+
+
+
 
 
 # Build the precedence graph

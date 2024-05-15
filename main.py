@@ -6,6 +6,7 @@ def exec(S):
     print(f"{bcolors.OKCYAN}\nSCHEDULE: {S}\n{bcolors.ENDC}")
     S = write_schedule(S)
     main_fun(S)
+    print_lock(S)
 
 
 # Schedules are in schedules.txt
