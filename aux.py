@@ -8,7 +8,12 @@ class Transaction:
         self.var = var.upper()
 
     def __str__(self):
-        return f"{self.oper}{self.trans[1]}({self.var})"
+        if(self.oper == "L"):
+            return f"{bcolors.FAIL}{self.oper}{self.trans[1]}({self.var}){bcolors.ENDC}"
+        elif(self.oper == "U"):
+            return f"{bcolors.OKGREEN}{self.oper}{self.trans[1]}({self.var}){bcolors.ENDC}"
+        else:
+            return f"{self.oper}{self.trans[1]}({self.var})"
     
     def __repr__(self):
         return self.__str__()
@@ -38,11 +43,22 @@ class Schedule:
             if item.get_int() not in self.trans:
                 self.trans.append(item.get_int())
     
-    def swap(self, ind1, ind2):
-        try:
-            self.transactions[ind1], self.transactions[ind2] = self.transactions[ind2], self.transactions[ind1]
-        except:
-            print("Error swapping")
+    # Returns the indexes range between two actions of the same T but different var, 
+    # where, betweem them, there is an action from a different T but with the same var of
+    # the first action. i.e. W1(X) W2(X) R1(Y), so T1 needs to anticipate the lock on Y
+    def index_range(self, item):
+        if not(isinstance(item, Transaction)):
+            return False
+        else:
+            init = self.transactions.index(item)
+            final = None
+            for elem in self.transactions[init+1:]:
+                if elem.get_int() == item.get_int() and elem.var != item.var:
+                    final = self.transactions.index(elem)
+                    return (init, final)
+        if final == None:
+            return False
+
 
     def __len__(self):
         return len(self.transactions)
@@ -54,73 +70,125 @@ class Schedule:
                 if(item.get_int() == elem):
                     ret.add(item)
         return ret
+    
+    def get_sorted(self):
+        ret = {}
+        for elem in self.transactions:
+            if not elem.var in ret:
+                ret[elem.var] = [elem]
+            else:
+                ret[elem.var].append(elem)
+        return ret
+                
+
 
     def __repr__(self):
         return ', '.join(map(repr, self.transactions))
 
-class LockTable:
+class TwoPL:
     def __init__(self, S):
-        self.var = []
-        self.trans = []
-        self.locked = {}
-        if(isinstance(S, Schedule)):
-            self.var = S.var
-            self.trans = S.trans
-            for item in self.var:
-                self.locked[item] = self.Lock()
-    
-
-    def lock(self, var, trans):
-        if not self.check(var):
-            self.locked[var] = self.Lock(locked = True, trans = trans)
-            return True
-        else: return False
-
-    def unlock(self, var):
-        if self.check(var):
-            self.locked[var].clear()
-            return True
-        else: return False
+        self.schedule = S
+        self.locktable = {}
+        self.operations = S.get_sorted() # actions for each variable
+        self.phase = {} # growing or shrinking
+        for elem in S.transactions:
+            if elem.get_int() not in self.phase:
+                # initially set all transactions to be in growing phase
+                self.phase[elem.get_int()] = True 
+            
+            # initialize locktable 
+            if elem.var not in self.locktable:
+                self.locktable[elem.var] = None
 
     
-    def check(self, var):
-        if var in self.var:
-            return self.locked[var].check()
+    def lock(self, elem):
+        var = elem.var
+        # check if T has already locked var
+        if self.locktable[var] != None:
+            if self.locktable[var] == elem.get_int():
+                return False
+            else:
+                return "ERROR" # locked by someone else
+        
+        else:
+             # check if T in shrinking phase
+            if(self.phase[elem.get_int()] == False):
+                return "ERROR" # schedule is not in 2PL, T has already unlocked
+            
+            # can lock
+            ret = []
+            self.locktable[var] = elem.get_int()
+            ret.append(Transaction(elem.trans, "L", var))
 
-    def __repr__(self):
-        ret = "LOCKTABLE:\n\n"
-        for item in self.var:
-            ret+=f"{item}: locked = {self.locked[item].check()}, by: {self.locked[item].get()}\n"
+            # now check if it needs to anticipate some other lock
+            check = self.check_lock(elem)
+            if(check):
+                for item in check:
+                    ret.append(item)
+            return ret
+
+    
+    def unlock(self, elem):
+        int_t = elem.get_int()
+
+        # Remove item from operations list
+        if elem in self.operations[elem.var]:
+            self.operations[elem.var].remove(elem)
+
+        # check if there are other operations later
+        for values in self.operations.values():
+            for i in values:
+                if int_t == i.get_int():
+                    return False # can't unlock yet
+
+        # change phase to shrinking
+        if(self.phase[int_t] == True):
+            self.phase[elem.get_int()] = False
+        
+        # Release all var locked by this T
+        ret=self.release(elem)    
+        return ret
+    
+
+    def release(self, elem):
+        trans = elem.get_int()
+        ret = []
+
+        remaining = self.schedule.transactions[self.schedule.transactions.index(elem)+1:]
+
+        for key, values in self.locktable.items():
+            if(values == trans):                
+                if(len(remaining) < 2):
+                    self.locktable[key] = None
+                    ret.append(Transaction(elem.trans, "U", key))
+                
+                else:
+                    for item in remaining:
+                        if(key == item.var and values != item.get_int()):
+                            self.locktable[key] = None
+                            ret.append(Transaction(elem.trans, "U", key))
         return ret
 
-    class Lock:
-        def __init__(self, locked=False, trans=None):
-            self.trans = trans
-            self.locked = locked
+
+    def check_lock(self, elem):
+        tup = self.schedule.index_range(elem)
+        if not tup:
+            return False
         
-        def check(self):
-            return self.locked
-
-        def clear(self):
-            if self.locked == True:
-                self.trans = None
-                self.locked = False
-                return True
-            else: return False
-        
-        def get(self):
-            return self.trans
+        init, final = tup
+        for i in range(init+1, final):
+            item = self.schedule.transactions[i]
+            if(item.var == elem.var):
+                new = self.schedule.transactions[final]
+                self.operations[new.var].remove(new)
+                lock = self.lock(new)
+                return lock
+        return False
 
 
-####################
-# 2PL section
-####################
-def print_lock(S):
-    print(LockTable(S))
 
-def assign_locks(S):
-
-
+    def __repr__(self):
+        return f"{self.locktable}\n"
 
 
 

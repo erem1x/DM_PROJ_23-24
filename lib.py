@@ -7,17 +7,24 @@ def main_fun(S):
     conf_ser = False
     view_ser = False
 
-    print(f"{bcolors.ITALIC}Checking conflict-serialisability...{bcolors.ENDC}", end="\n\n")
+    print(f"{bcolors.ITALIC}Checking conflict-serializability...{bcolors.ENDC}", end="\n\n")
     nodes, edges = precedence_graph(S)
     if not check_cycle(nodes, edges):
-        print(f"{bcolors.OKGREEN}Schedule is conflict-serialisable!{bcolors.ENDC}")
+        print(f"{bcolors.OKGREEN}Schedule is conflict-serializable!{bcolors.ENDC}")
         conf_ser = True
         view_ser = True
+        print(f"\n{bcolors.ITALIC}Checking if it belongs to the 2PL class...{bcolors.ENDC}", end="\n\n")
+        twoPL = check_2PL(S)
+        if(twoPL):
+            print(f"\n{bcolors.OKGREEN}Schedule is in 2PL class!{bcolors.ENDC}")
+        else:
+            print(f"{bcolors.FAIL}Schedule is not in 2PL class!{bcolors.ENDC}")
+
     
     else:
-        print(f"{bcolors.FAIL}Schedule is not conflict-serialisable!{bcolors.ENDC}\n")
+        print(f"{bcolors.FAIL}Schedule is not conflict-serializable!{bcolors.ENDC}\n")
         conf_ser = False
-        print(f"{bcolors.ITALIC}Checking view-serialisability...{bcolors.ENDC}", end="\n\n")
+        print(f"{bcolors.ITALIC}Checking view-serializability...{bcolors.ENDC}", end="\n\n")
 
         ret = check_view(S)
         if(ret is not None):
@@ -25,10 +32,33 @@ def main_fun(S):
             print(f"Here is a view-equivalent schedule:")
             print("["+', '.join(['T' + str(num) for num in ret.trans])+"]\n", bcolors.BOLD)
             print(ret, f"{bcolors.ENDC}\n")
-            print(f"{bcolors.OKGREEN}Schedule is view-serialisable!{bcolors.ENDC}")
+            print(f"{bcolors.OKGREEN}Schedule is view-serializable!{bcolors.ENDC}")
 
         else:
-            print(f"{bcolors.FAIL}Schedule is not view-serialisable!{bcolors.ENDC}")
+            print(f"{bcolors.FAIL}Schedule is not view-serializable!{bcolors.ENDC}")
+
+
+# Function to assign locks and unlocks
+# Most of the work is in the TwoPL class itself
+def check_2PL(S):
+    Twolock = TwoPL(S)
+    ret = Schedule()
+    for elem in S.transactions:
+        lock = Twolock.lock(elem)
+        if(lock == "ERROR"):
+            return False
+        elif(lock):
+            for item in lock:
+                ret.add(item)
+        
+        unlock = Twolock.unlock(elem)
+        ret.add(elem)
+        if(unlock):
+            for item in unlock:
+                ret.add(item)
+    
+    print(ret)
+    return ret
 
 
 # Function to get a view-equivalent schedule
