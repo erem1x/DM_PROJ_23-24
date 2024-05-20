@@ -1,24 +1,19 @@
 from aux import *
 # SET OF AUX FUNCTIONS
 
-def main_fun(S):
-    # summary
-    twoPL = False 
-    conf_ser = False
-    view_ser = False
-
+def main_fun(S, flag):
     print(f"{bcolors.ITALIC}Checking conflict-serializability...{bcolors.ENDC}", end="\n\n")
-    nodes, edges = precedence_graph(S)
+    nodes, edges = precedence_graph(S, flag)
     if not check_cycle(nodes, edges):
         print(f"{bcolors.OKGREEN}Schedule is conflict-serializable!{bcolors.ENDC}")
         conf_ser = True
         view_ser = True
         print(f"\n{bcolors.ITALIC}Checking if it belongs to the 2PL class...{bcolors.ENDC}", end="\n\n")
-        twoPL = check_2PL(S)
-        if(twoPL):
+        twoPL = check_2PL(S, flag)
+        if(isinstance(twoPL, Schedule)):
             print(f"\n{bcolors.OKGREEN}Schedule is in 2PL class!{bcolors.ENDC}")
         else:
-            print(f"{bcolors.FAIL}Schedule is not in 2PL class!{bcolors.ENDC}")
+            print(f"{bcolors.FAIL}{twoPL}{bcolors.ENDC}")
 
     
     else:
@@ -26,7 +21,7 @@ def main_fun(S):
         conf_ser = False
         print(f"{bcolors.ITALIC}Checking view-serializability...{bcolors.ENDC}", end="\n\n")
 
-        ret = check_view(S)
+        ret = check_view(S, flag)
         if(ret is not None):
             view_ser = True
             print(f"Here is a view-equivalent schedule:")
@@ -35,19 +30,24 @@ def main_fun(S):
             print(f"{bcolors.OKGREEN}Schedule is view-serializable!{bcolors.ENDC}")
 
         else:
-            print(f"{bcolors.FAIL}Schedule is not view-serializable!{bcolors.ENDC}")
+            print(f"{bcolors.FAIL}Schedule is not view-serializable, couldn't find a view-equivalent serial schedule!{bcolors.ENDC}")
 
 
 # Function to assign locks and unlocks
 # Most of the work is in the TwoPL class itself
-def check_2PL(S):
+def check_2PL(S, flag=False):
     Twolock = TwoPL(S)
     ret = Schedule()
     for elem in S.transactions:
-        lock = Twolock.lock(elem)
-        if(lock == "ERROR"):
-            return False
-        elif(lock):
+        try:
+            lock = Twolock.lock(elem, flag)
+        except SystemError as e:
+            if(flag):
+                return f"{ret}\n{Twolock.locktable}\nSchedule not in 2PL: {e}"
+            else:
+                return "Schedule not in 2PL!"
+        
+        if(lock):
             for item in lock:
                 ret.add(item)
         
@@ -57,13 +57,33 @@ def check_2PL(S):
             for item in unlock:
                 ret.add(item)
     
-    print(ret)
-    return ret
+    if(is_valid(ret)):
+        if(flag):
+            print(f"LOCKTABLE:\n{Twolock.locktable}\n")
+            print(f"Any T in growing phase?\n{Twolock.phase}\n")
+            print(ret, "\n")
+        return ret
+    else:return False
+
+
+# check if a lock schedule is legal
+def is_valid(S):
+    l = []
+    for elem in S.transactions:
+        if(elem.oper == "L"):
+            l.append(elem.trans[1]+elem.var)
+        elif(elem.oper == "U"):
+            l.remove(elem.trans[1]+elem.var)
+    if(l == []):
+        return True
+    else:
+        print(l)
+        return False
 
 
 # Function to get a view-equivalent schedule
 def brute_force(S, R, F, O):
-    # easiest way is to swap items until we find a view-eq schedule
+    # easiest way is to swap until we find a view-eq schedule
     def recurr(aux):
         nonlocal found
         if found: return
@@ -76,7 +96,7 @@ def brute_force(S, R, F, O):
     def check(aux):
         if(get_view(aux)[:2] == [R, F]):
             return True
-        else: 
+        else:
             return False
 
 
@@ -119,10 +139,12 @@ def get_view(S):
 
 
 #Only way is to bruteforce, not suitable for big inputs
-def check_view(S):
+def check_view(S, flag=False):
     reads_from, final_write, write_order = get_view(S)
 
-    print("FINAL-WRITE:",print_view(final_write, "FW"))
-    print("READS-FROM:", print_view(reads_from, "RF"), end="\n\n")
+    if(flag):
+        print("FINAL-WRITE:",print_view(final_write, "FW"))
+        print("READS-FROM:", print_view(reads_from, "RF"), end="\n\n")
 
     return brute_force(S, reads_from, final_write, write_order)
+

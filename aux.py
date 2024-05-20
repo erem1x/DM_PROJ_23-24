@@ -43,7 +43,7 @@ class Schedule:
             if item.get_int() not in self.trans:
                 self.trans.append(item.get_int())
     
-    # Returns the indexes range between two actions of the same T but different var, 
+    # Returns the indexes range between the actions of the same T but different var, 
     # where, betweem them, there is an action from a different T but with the same var of
     # the first action. i.e. W1(X) W2(X) R1(Y), so T1 needs to anticipate the lock on Y
     def index_range(self, item):
@@ -51,13 +51,13 @@ class Schedule:
             return False
         else:
             init = self.transactions.index(item)
-            final = None
+            ret = [init]
             for elem in self.transactions[init+1:]:
                 if elem.get_int() == item.get_int() and elem.var != item.var:
-                    final = self.transactions.index(elem)
-                    return (init, final)
-        if final == None:
+                     ret.append(self.transactions.index(elem))
+        if len(ret) < 1:
             return False
+        return ret
 
 
     def __len__(self):
@@ -101,24 +101,31 @@ class TwoPL:
                 self.locktable[elem.var] = None
 
     
-    def lock(self, elem):
+    def lock(self, elem, flag=False):
         var = elem.var
         # check if T has already locked var
         if self.locktable[var] != None:
             if self.locktable[var] == elem.get_int():
                 return False
             else:
-                return "ERROR" # locked by someone else
-        
+                print("LOCKTABLE:")
+                print(self.locktable)
+                raise SystemError(f"{elem} cannot lock {var} because already locked by T{self.locktable[var]}")
+                    
         else:
              # check if T in shrinking phase
             if(self.phase[elem.get_int()] == False):
-                return "ERROR" # schedule is not in 2PL, T has already unlocked
+                raise SystemError(f"T{elem.get_int()} is in shrinking mode, {elem} cannot lock {var}")
             
             # can lock
             ret = []
             self.locktable[var] = elem.get_int()
             ret.append(Transaction(elem.trans, "L", var))
+
+
+            # can't recurse if the lock has already been anticipated
+            if elem not in self.operations[elem.var]:
+                return ret
 
             # now check if it needs to anticipate some other lock
             check = self.check_lock(elem)
@@ -130,7 +137,6 @@ class TwoPL:
     
     def unlock(self, elem):
         int_t = elem.get_int()
-
         # Remove item from operations list
         if elem in self.operations[elem.var]:
             self.operations[elem.var].remove(elem)
@@ -151,39 +157,61 @@ class TwoPL:
     
 
     def release(self, elem):
+        # just to clean up the code
+        def free(key):
+            self.locktable[key] = None
+            ret.append(Transaction(elem.trans, "U", key))
+
         trans = elem.get_int()
         ret = []
-
         remaining = self.schedule.transactions[self.schedule.transactions.index(elem)+1:]
 
         for key, values in self.locktable.items():
             if(values == trans):                
-                if(len(remaining) < 2):
-                    self.locktable[key] = None
-                    ret.append(Transaction(elem.trans, "U", key))
-                
+                if(len(remaining) < 1):
+                    free(key)
                 else:
+                    flag=True
                     for item in remaining:
-                        if(key == item.var and values != item.get_int()):
-                            self.locktable[key] = None
-                            ret.append(Transaction(elem.trans, "U", key))
+                        if(values == item.get_int() and key == item.var):
+                            flag=False
+                        if(key == item.var and values != item.get_int() and self.locktable[key] != None and flag):
+                            free(key)
+                    if(flag and self.locktable[key] != None):
+                        free(key)
+
         return ret
 
 
+
     def check_lock(self, elem):
-        tup = self.schedule.index_range(elem)
+        tup = self.schedule.index_range(elem) # at least two items, current action and future actions
         if not tup:
             return False
-        
-        init, final = tup
+
+        flag = False
+        # Now checking all the other operations under the same T to check if they need the lock now
+        # If flag set to True, T has to unlock so it will lock for all its actions that need it :
+        init=tup[0]
+        final=tup[-1]
+        ret = []
         for i in range(init+1, final):
             item = self.schedule.transactions[i]
             if(item.var == elem.var):
-                new = self.schedule.transactions[final]
+                flag = True
+                break
+        if(flag):
+            for item in tup[1:]:
+                new = self.schedule.transactions[item]
                 self.operations[new.var].remove(new)
-                lock = self.lock(new)
-                return lock
-        return False
+                try:
+                    lock = self.lock(new)
+                    ret.extend(lock)
+                except SystemError:
+                    print("BIG ERROR")
+                    return False
+        
+        return ret
 
 
 
@@ -193,7 +221,7 @@ class TwoPL:
 
 
 # Build the precedence graph
-def precedence_graph(S):
+def precedence_graph(S, flag=False):
     nodes = []
     edges = {}
     
@@ -222,7 +250,8 @@ def precedence_graph(S):
                 if trans not in edges[old_trans]:
                     edges[old_trans].append(trans)
     
-    print_graph(nodes, edges)
+    if(flag):
+        print_graph(nodes, edges)
 
     return [nodes, edges]
 
