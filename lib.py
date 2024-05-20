@@ -13,7 +13,7 @@ def main_fun(S, flag):
         if(isinstance(twoPL, Schedule)):
             print(f"\n{bcolors.OKGREEN}Schedule is in 2PL class!{bcolors.ENDC}")
         else:
-            print(f"{bcolors.FAIL}{twoPL}{bcolors.ENDC}")
+            print(f"{twoPL}")
 
     
     else:
@@ -43,7 +43,7 @@ def check_2PL(S, flag=False):
             lock = Twolock.lock(elem, flag)
         except SystemError as e:
             if(flag):
-                return f"{ret}\n{Twolock.locktable}\nSchedule not in 2PL: {e}"
+                return f"{ret}\n\n{bcolors.FAIL}Schedule not in 2PL: {e}{bcolors.ENDC}"
             else:
                 return "Schedule not in 2PL!"
         
@@ -77,7 +77,6 @@ def is_valid(S):
     if(l == []):
         return True
     else:
-        print(l)
         return False
 
 

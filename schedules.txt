@@ -1,2 +1,1 @@
-r1(x) w2(x) r2(x) r4(x) w5(x) w2(h) w1(t) r1(j) w7(j) r7(x) w8(x) r7(h) w8(j) w9(z) r1(p)
-r1(x) w2(x) w1(x) w3(x)
+R1(x) w1(y) w2(y) w1(z) r2(z) r2(h) w3(h) r2(j) w3(j)

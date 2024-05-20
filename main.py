@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 from lib import *
 from aux import bcolors, write_schedule
 import argparse
