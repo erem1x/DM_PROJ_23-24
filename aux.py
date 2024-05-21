@@ -7,6 +7,7 @@ class Transaction:
         self.oper = oper.upper()
         self.var = var.upper()
 
+
     def __str__(self):
         if(self.oper == "L"):
             return f"{bcolors.FAIL}{self.oper}{self.trans[1]}({self.var}){bcolors.ENDC}"
@@ -14,26 +15,34 @@ class Transaction:
             return f"{bcolors.OKGREEN}{self.oper}{self.trans[1]}({self.var}){bcolors.ENDC}"
         else:
             return f"{self.oper}{self.trans[1]}({self.var})"
-    
+
+
     def __repr__(self):
         return self.__str__()
-    
+
+
     def __eq__(self, other):
         if isinstance(other, Transaction):
             return self.trans == other.trans and self.oper == other.oper and self.var == other.var
         return False
-    
+
+
     def __hash__(self):
         return hash((self.trans, self.var, self.oper))
-    
+
+
+    # returns the integer of the transaction i
     def get_int(self):
         return int(self.trans[1])
 
+
+# For semplicity, the class keeps stored the list of variables used 
 class Schedule:
     def __init__(self):
         self.transactions = []
         self.var = []
         self.trans = []
+
 
     def add(self, item):
         if(isinstance(item, Transaction)):
@@ -46,6 +55,8 @@ class Schedule:
     # Returns the indexes range between the actions of the same T but different var, 
     # where, betweem them, there is an action from a different T but with the same var of
     # the first action. i.e. W1(X) W2(X) R1(Y), so T1 needs to anticipate the lock on Y
+    # (USED FOR 2PL CHECKING)
+    # Cycles just once per T since the lock anticipations are registered 
     def index_range(self, item):
         if not(isinstance(item, Transaction)):
             return False
@@ -62,7 +73,9 @@ class Schedule:
 
     def __len__(self):
         return len(self.transactions)
-    
+
+
+    # sort the schedule according to a given Ti order
     def sort(self, order):
         ret = Schedule()
         for elem in order:
@@ -70,7 +83,9 @@ class Schedule:
                 if(item.get_int() == elem):
                     ret.add(item)
         return ret
-    
+
+
+    # returns a dictionary of the schedule where the actions are associated to the common variable
     def get_sorted(self):
         ret = {}
         for elem in self.transactions:
@@ -79,12 +94,15 @@ class Schedule:
             else:
                 ret[elem.var].append(elem)
         return ret
-                
 
 
     def __repr__(self):
         return ', '.join(map(repr, self.transactions))
 
+
+# Contains the locktable and keeps track of the transactions' phase (growing or shrinking) 
+# and a list of "future" operations that require attention
+# If a future operation has been already granted an anticipated lock, it gets deleted from that list
 class TwoPL:
     def __init__(self, S):
         self.schedule = S
@@ -93,7 +111,7 @@ class TwoPL:
         self.phase = {} # growing or shrinking
         for elem in S.transactions:
             if elem.get_int() not in self.phase:
-                # initially set all transactions to be in growing phase
+                # initially set all the T's to be in growing phase
                 self.phase[elem.get_int()] = True 
             
             # initialize locktable 
@@ -101,6 +119,8 @@ class TwoPL:
                 self.locktable[elem.var] = None
 
     
+    # lock function (checks for anticipated locks too)
+    # returns a list of locks
     def lock(self, elem, flag=False):
         var = elem.var
         # check if T has already locked var
@@ -108,8 +128,6 @@ class TwoPL:
             if self.locktable[var] == elem.get_int():
                 return False
             else:
-                print("LOCKTABLE:")
-                print(self.locktable)
                 raise SystemError(f"{elem} cannot lock {var} because already locked by T{self.locktable[var]}")
                     
         else:
@@ -127,14 +145,15 @@ class TwoPL:
             if elem not in self.operations[elem.var]:
                 return ret
 
-            # now check if it needs to anticipate some other lock
+            # now checks if it needs to anticipate some other lock
             check = self.check_lock(elem)
             if(check):
                 for item in check:
                     ret.append(item)
             return ret
 
-    
+
+    # unlock function, checks if and how many unlocks to perform
     def unlock(self, elem):
         int_t = elem.get_int()
         # Remove item from operations list
@@ -156,8 +175,9 @@ class TwoPL:
         return ret
     
 
+    # aux function used to effectively unlock the locks
     def release(self, elem):
-        # just to clean up the code
+        # just to clean up the code a bit
         def free(key):
             self.locktable[key] = None
             ret.append(Transaction(elem.trans, "U", key))
@@ -166,6 +186,8 @@ class TwoPL:
         ret = []
         remaining = self.schedule.transactions[self.schedule.transactions.index(elem)+1:]
 
+        # checks for every variable if the current transaction has the lock, proceed to unlock it 
+        # if it is no longer needed 
         for key, values in self.locktable.items():
             if(values == trans):                
                 if(len(remaining) < 1):
@@ -183,11 +205,12 @@ class TwoPL:
         return ret
 
 
-
+    # aux function used to check if some locks need to be anticipated before entering the shrinking phase
+    # It gets a tuple of indexes of future actions by the same T
     def check_lock(self, elem):
         tup = self.schedule.index_range(elem) # at least two items, current action and future actions
-        if not tup:
-            return False
+        if not tup: 
+            return False # no future actions
 
         flag = False
         # Now checking all the other operations under the same T to check if they need the lock now
@@ -206,13 +229,13 @@ class TwoPL:
                 self.operations[new.var].remove(new)
                 try:
                     lock = self.lock(new)
+                    if(not lock):
+                        continue
                     ret.extend(lock)
                 except SystemError:
-                    print("BIG ERROR")
                     return False
         
         return ret
-
 
 
     def __repr__(self):

@@ -1,37 +1,11 @@
 from aux import *
 # SET OF AUX FUNCTIONS
 
-def main_fun(S, flag):
+def conflict_serializable(S, flag):
     print(f"{bcolors.ITALIC}Checking conflict-serializability...{bcolors.ENDC}", end="\n\n")
     nodes, edges = precedence_graph(S, flag)
-    if not check_cycle(nodes, edges):
-        print(f"{bcolors.OKGREEN}Schedule is conflict-serializable!{bcolors.ENDC}")
-        conf_ser = True
-        view_ser = True
-        print(f"\n{bcolors.ITALIC}Checking if it belongs to the 2PL class...{bcolors.ENDC}", end="\n\n")
-        twoPL = check_2PL(S, flag)
-        if(isinstance(twoPL, Schedule)):
-            print(f"\n{bcolors.OKGREEN}Schedule is in 2PL class!{bcolors.ENDC}")
-        else:
-            print(f"{twoPL}")
-
-    
-    else:
-        print(f"{bcolors.FAIL}Schedule is not conflict-serializable!{bcolors.ENDC}\n")
-        conf_ser = False
-        print(f"{bcolors.ITALIC}Checking view-serializability...{bcolors.ENDC}", end="\n\n")
-
-        ret = check_view(S, flag)
-        if(ret is not None):
-            view_ser = True
-            print(f"Here is a view-equivalent schedule:")
-            print("["+', '.join(['T' + str(num) for num in ret.trans])+"]\n", bcolors.BOLD)
-            print(ret, f"{bcolors.ENDC}\n")
-            print(f"{bcolors.OKGREEN}Schedule is view-serializable!{bcolors.ENDC}")
-
-        else:
-            print(f"{bcolors.FAIL}Schedule is not view-serializable, couldn't find a view-equivalent serial schedule!{bcolors.ENDC}")
-
+    return check_cycle(nodes, edges)
+        
 
 # Function to assign locks and unlocks
 # Most of the work is in the TwoPL class itself
@@ -65,8 +39,7 @@ def check_2PL(S, flag=False):
         return ret
     else:return False
 
-
-# check if a lock schedule is legal
+# check if a lock schedule is legal before outputting it
 def is_valid(S):
     l = []
     for elem in S.transactions:
@@ -79,10 +52,12 @@ def is_valid(S):
     else:
         return False
 
-
-# Function to get a view-equivalent schedule
+# Function to get a view-equivalent schedule, it's a brute force algorithm that generates
+# all the permutations of the Ti, i.e. if there are three transactions, [T1, T2, T3], it will
+# generate all the permutations of 1,2,3. That's the heavy part, but after that, the permutations
+# have to pass a check given from the writeset, final-write and read-from
 def brute_force(S, R, F, O):
-    # easiest way is to swap until we find a view-eq schedule
+    # easiest way is to swap Ti until we find a view-eq schedule
     def recurr(aux):
         nonlocal found
         if found: return
@@ -111,7 +86,7 @@ def brute_force(S, R, F, O):
     
     return ret if found else None
     
-# compute READS-FROM and FINAL-WRITE on one cycle
+# computes READS-FROM and FINAL-WRITE on one cycle
 def get_view(S):
     final_write = {} # dict[var] = Transaction
     reads_from = {} # dict[trans] = [trans]
