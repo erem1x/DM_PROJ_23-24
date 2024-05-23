@@ -4,7 +4,13 @@ from aux import *
 def conflict_serializable(S, flag):
     print(f"{bcolors.ITALIC}Checking conflict-serializability...{bcolors.ENDC}", end="\n\n")
     nodes, edges = precedence_graph(S, flag)
-    return check_cycle(nodes, edges)
+    check = check_cycle(nodes, edges)
+    if(not check and flag):
+        print("Here is a conflict-equivalent schedule:\n")
+        order = topological_sort(nodes, edges)
+        print(f"{bcolors.BOLD}{S.sort(order)}{bcolors.ENDC}\n")
+    return check
+
         
 
 # Function to assign locks and unlocks

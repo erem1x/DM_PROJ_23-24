@@ -272,6 +272,37 @@ def precedence_graph(S, flag=False):
 
     return [nodes, edges]
 
+
+# if the schedule is conflict-serializable, print a conf-eq schedule (topological sort)
+def topological_sort(nodes, edges):
+
+    # Calculate in-degree (number of incoming edges) for each node
+    in_degree = {node: 0 for node in nodes}
+    for node in edges:
+        for neighbor in edges[node]:
+            in_degree[neighbor] += 1
+
+    # Initialize the queue with nodes that have no incoming edges
+    queue = [node for node in nodes if in_degree[node] == 0]
+    
+    # List to store the topological order
+    topological_order = []
+
+    while queue:
+        current_node = queue.pop(0)
+        topological_order.append(int(current_node[1]))
+
+        # Decrease the in-degree of each neighbor by 1
+        if current_node in edges:
+            for neighbor in edges[current_node]:
+                in_degree[neighbor] -= 1
+                # If in-degree becomes zero, add to the queue
+                if in_degree[neighbor] == 0:
+                    queue.append(neighbor)
+    
+    return topological_order
+
+
 # Print the graph
 def print_graph(nodes, edges):
     print("PRECEDENCE GRAPH:")

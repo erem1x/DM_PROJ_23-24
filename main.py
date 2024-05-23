@@ -23,7 +23,10 @@ def exec(S, flag=False):
         if(isinstance(twoPL, Schedule)):
             print(f"\n{bcolors.OKGREEN}Schedule is in 2PL class!{bcolors.ENDC}")
         else:
-            print(f"{twoPL}")
+            if(flag):
+                print(f"{twoPL}")
+            else:
+                print(f"{bcolors.FAIL}Schedule not in 2PL!{bcolors.ENDC}")
     
     # else, we can still check if it's view-serializable
     else:
