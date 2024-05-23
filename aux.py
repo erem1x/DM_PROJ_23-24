@@ -21,12 +21,6 @@ class Transaction:
         return self.__str__()
 
 
-    def __eq__(self, other):
-        if isinstance(other, Transaction):
-            return self.trans == other.trans and self.oper == other.oper and self.var == other.var
-        return False
-
-
     def __hash__(self):
         return hash((self.trans, self.var, self.oper))
 

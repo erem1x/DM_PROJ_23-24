@@ -1,1 +1,1 @@
-r1(x) r1(t) r2(z) w3(x) w1(x) r1(y) w3(t) w2(x) w1(y)
+r1(x) w2(x) r1(x)
